@@ -1,14 +1,24 @@
 import asyncio
 import logging
+import os
+import gspread
+
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-import gspread
+from dotenv import load_dotenv
 
-from config import BOT_TOKEN, ADMIN_ID, PHONE_NUMBER, SPREADSHEET_NAME
+# Загружаем переменные из .env при локальном запуске (на Render подтянутся из настройки Environment Variables)
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+# Преобразуем ADMIN_ID в int, чтобы aiogram не выдавал ошибку типа данных
+ADMIN_ID = int(os.getenv("ADMIN_ID", 0)) if os.getenv("ADMIN_ID") else None
+PHONE_NUMBER = os.getenv("PHONE_NUMBER")
+SPREADSHEET_NAME = os.getenv("SPREADSHEET_NAME")
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -151,12 +161,15 @@ async def process_payment_screenshot(message: types.Message, state: FSMContext):
     admin_kb.adjust(2)
 
     try:
-        await bot.send_photo(
-            chat_id=ADMIN_ID,
-            photo=photo_file_id,
-            caption=admin_notification,
-            reply_markup=admin_kb.as_markup()
-        )
+        if ADMIN_ID:
+            await bot.send_photo(
+                chat_id=ADMIN_ID,
+                photo=photo_file_id,
+                caption=admin_notification,
+                reply_markup=admin_kb.as_markup()
+            )
+        else:
+            logging.error("ADMIN_ID не задан!")
     except Exception as e:
         logging.error(f"НЕ УДАЛОСЬ ОТПРАВИТЬ АДМИНУ: {e}")
 
