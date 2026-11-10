@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import gspread
@@ -10,6 +11,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
+from google.oauth2.service_account import Credentials
 
 # Загружаем переменные из .env при локальном запуске (на Render подтянутся из настройки Environment Variables)
 load_dotenv()
@@ -28,9 +30,22 @@ bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# Подключение к Google Таблицам через credentials.json
+# Подключение к Google Таблицам (поддерживает Render через переменные и локальный файл)
 try:
-    gc = gspread.service_account(filename="credentials.json")
+    creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if creds_json:
+        creds_dict = json.loads(creds_json)
+        creds = Credentials.from_service_account_info(
+            creds_dict,
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive",
+            ],
+        )
+        gc = gspread.authorize(creds)
+    else:
+        gc = gspread.service_account(filename="credentials.json")
+
     sheet = gc.open(SPREADSHEET_NAME).sheet1
 except Exception as e:
     logging.error(f"Ошибка подключения к Google Таблицам: {e}")
